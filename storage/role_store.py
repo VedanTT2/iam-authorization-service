@@ -1,4 +1,4 @@
-from Modules.role import Role
+from models.role import Role
 
 class RoleStore:   # acts like an in memory db for storing roles
 

@@ -1,5 +1,5 @@
-from Modules.user import User
-from Modules.role import Role
+from models.user import User
+from models.role import Role
 from storage.role_store import RoleStore
 from services.user_service import UserService
 
