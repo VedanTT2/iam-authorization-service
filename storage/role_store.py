@@ -1,22 +1,34 @@
 from models.role import Role
+from storage.json_storage import load_json, save_json
 
-class RoleStore:   # acts like an in memory db for storing roles
+class RoleStore:
+    def __init__(self, file_path = "data/roles.json"):  # constructor runs when RoleStore obj is created
+        self.file_path = file_path      # files where roles will be stored
 
-    def __init__(self):
-        self.roles = {}  # Dict to store roles, key = roleID, value =  role object
+        self.roles = {}     # dict to store roles in memory, key = role_id, value = role obj
+
+        roles_data = load_json(self.file_path)    # load roles from json file
+
+        for role_data in roles_data:           # roles_data is list of dict
+            role = Role.from_dict(role_data)   # i convert each dict into role obj
+            self.roles[role.role_id] = role     # store role obj in dict
+
+    def add_role(self, role):            # add new role to the store
+        self.roles[role.role_id] = role # store role in dict using role_id as key
+        self._save_roles()              # save updated roles to JSON file
 
 
-    def add_role(self, role):           # add role object to the store
-        self.roles[role.role_id] = role
+    def get_role(self, role_id):        # get a role using role_id
+        return self.roles.get(role_id)  # # return role obj if found, otherwise return none
 
-
-    def get_role(self, role_id):        # getting a role by its ID, return None if not found
-        return self.roles.get(role_id)
-
-
-    def remove_role(self, role_id):     # remove a role from the store
+    def remove_role(self, role_id):
         if role_id in self.roles:
             del self.roles[role_id]
+            self._save_roles()
 
+    def get_all_roles(self):
+        return list(self.roles.values())
 
-
+    def _save_roles(self):
+        roles_data = [role.to_dict() for role in self.roles.values()]  # convert all role obj into dict
+        save_json(self.file_path, roles_data)    # store it in json file

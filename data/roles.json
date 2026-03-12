@@ -1,0 +1,27 @@
+[
+    {
+        "role_id": 1,
+        "name": "Viewer",
+        "permissions": [
+            "read"
+        ],
+        "parent_roles": []
+    },
+    {
+        "role_id": 2,
+        "name": "Editor",
+        "permissions": [
+            "write"
+        ],
+        "parent_roles": []
+    },
+    {
+        "role_id": 3,
+        "name": "Admin",
+        "permissions": [],
+        "parent_roles": [
+            1,
+            2
+        ]
+    }
+]

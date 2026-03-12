@@ -4,37 +4,27 @@ from storage.role_store import RoleStore
 from services.user_service import UserService
 
 role_store = RoleStore()  # Initialize role store
-user_service = UserService(role_store)
 
-# create roles
-admin = Role(1, "Admin")
-admin.add_permission("Read")
-admin.add_permission("Write")
-admin.add_permission("Delete")
-admin.add_permission("Create")
+viewer = Role(1, "Viewer")
+viewer.add_permission("read")
 
-associate = Role(2, "associate")
-associate.add_permission("Find")
+editor = Role(2, "Editor")
+editor.add_permission("write")
 
+admin = Role(3, "Admin")
+admin.add_parent_role(1)
+admin.add_parent_role(2)
 
-# Store roles in RoleStore
+role_store.add_role(viewer)
+role_store.add_role(editor)
 role_store.add_role(admin)
-role_store.add_role(associate)
 
-# User creation
-u1 = User(89,"Vedant")
-u2 = User(80,"Vedant ka boss")
-
-# assign role to user
-user_service.assign_role_to_user(u1, 1)
-user_service.assign_role_to_user(u1, 2)
-
-# test permissions
-print("User has write", user_service.user_has_permission(u1,"write"))
-print("User has find", user_service.user_has_permission(u1,"Find"))
-User.remove_role(u1,1)
-
-print("User has write", user_service.user_has_permission(u1,"write"))
+print("admin parents", admin.parent_roles)
+print("admin from store parents:", role_store.get_role(3).parent_roles)
+print(admin.get_all_permissions(role_store))
+print(admin.has_permission("read", role_store))
+print(admin.has_permission("write", role_store))
+print(admin.has_permission("delete", role_store))
 
 
 
