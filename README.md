@@ -1,7 +1,8 @@
 # IAM Authorization Service
 
-A Python-based authorization engine that implements Role-Based Access Control (RBAC) using a layered architecture.  
-This project is being built step by step to simulate how real-world IAM and access control systems evaluate permissions for users based on assigned roles.
+A Python-based authorization engine that implements Role-Based Access Control (RBAC) using a layered architecture.
+This project simulates how real-world Identity and Access Management (IAM) systems evaluate permissions for users based on assigned roles and role hierarchies.
+The system supports role inheritance and recursive permission resolution, similar to enterprise IAM implementations.
 
 ## Current Features
 
