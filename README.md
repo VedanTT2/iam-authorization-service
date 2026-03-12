@@ -6,9 +6,11 @@ This project is being built step by step to simulate how real-world IAM and acce
 ## Current Features
 
 - Role model with permission management
-- User model with support for multiple role assignments
-- Role storage layer
+- User model supporting multiple role assignments
+- Role inheritance (hierarchical RBAC)
+- Recursive permission resolution across inherited roles
 - Service layer for authorization logic
-- Permission evaluation across assigned roles
+- JSON-based persistence layer
 - Case-insensitive permission handling
+- Modular architecture (models / services / storage)
 
