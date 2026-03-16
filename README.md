@@ -6,12 +6,11 @@ The system supports role inheritance and recursive permission resolution, simila
 
 ## Current Features
 
-- Role model with permission management
-- User model supporting multiple role assignments
+- Create and manage users
+- Assign roles to users
+- Role-based permission checks
 - Role inheritance (hierarchical RBAC)
-- Recursive permission resolution across inherited roles
-- Service layer for authorization logic
-- JSON-based persistence layer
-- Case-insensitive permission handling
-- Modular architecture (models / services / storage)
+- Persistent storage using JSON
+- CLI interface for interacting with the system
+- Modular architecture (models, storage, services)
 
