@@ -16,7 +16,11 @@ class UserService:
         for role_id in user.role_ids:
             role = self.role_store.get_role(role_id)
 
-            if role and role.has_permission(permission):
-                return True
+            if role:
+
+                all_permissions = role.get_all_permissions(self.role_store)
+
+                if permission in all_permissions:
+                    return True
         return False
 

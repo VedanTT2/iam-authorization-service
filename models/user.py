@@ -19,7 +19,7 @@ class User:
                 }
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, data):
         return cls(
             data["user_id"],
             data["username"],
