@@ -6,11 +6,16 @@ The system supports role inheritance and recursive permission resolution, simila
 
 ## Current Features
 
-- Create and manage users
+- User creation and storage
+- Role creation and storage
 - Assign roles to users
-- Role-based permission checks
-- Role inheritance (hierarchical RBAC)
-- Persistent storage using JSON
-- CLI interface for interacting with the system
-- Modular architecture (models, storage, services)
-
+- Permission checking
+- Hierarchical role inheritance
+- Recursive permission resolution using DFS
+- Cycle-safe traversal using a visited set
+- Cycle prevention while assigning parent roles
+- Describe user access with effective permissions
+- Visualize role hierarchy
+- Trace why a user has a permission
+- Persistent storage using JSON files
+- CLI-based interaction
