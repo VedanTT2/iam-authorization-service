@@ -26,6 +26,27 @@ class RoleStore:
             del self.roles[role_id]
             self._save_roles()
 
+    def add_parent_to_role(self, child_role_id, parent_role_id):
+        child_role = self.get_role(child_role_id)
+        parent_role = self.get_role(parent_role_id)
+
+        if not child_role:
+            raise ValueError(f"Child role ID {child_role_id} does not exist")
+
+        if not parent_role:
+            raise ValueError(f"Parent role ID {parent_role_id} does not exist")
+
+        if child_role_id == parent_role_id:
+            raise ValueError("A role cannot inherit from itself")
+
+        # If parent already inherits from child, adding this link creates a cycle
+        if parent_role.inherits_from(child_role_id, self):
+            raise ValueError(f"Cannot add parent role '{parent_role_id}' to '{child_role_id}' because it creates a cycle ")
+
+        child_role.add_parent_role(parent_role_id)
+        self._save_roles()
+
+
     def get_all_roles(self):
         return list(self.roles.values())
 

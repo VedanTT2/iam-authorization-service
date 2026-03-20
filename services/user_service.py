@@ -13,14 +13,13 @@ class UserService:
         user.role_ids.add(role_id)
 
     def user_has_permission(self, user, permission):
+        permission = permission.lower()
+
         for role_id in user.role_ids:
             role = self.role_store.get_role(role_id)
 
-            if role:
+            if role and role.has_permission(permission, self.role_store):
+                return True
 
-                all_permissions = role.get_all_permissions(self.role_store)
-
-                if permission in all_permissions:
-                    return True
         return False
 

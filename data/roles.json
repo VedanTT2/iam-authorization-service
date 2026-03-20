@@ -13,7 +13,9 @@
         "permissions": [
             "write"
         ],
-        "parent_roles": []
+        "parent_roles": [
+            1
+        ]
     },
     {
         "role_id": 3,
