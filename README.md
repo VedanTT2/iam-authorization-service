@@ -19,3 +19,7 @@ The system supports role inheritance and recursive permission resolution, simila
 - Trace why a user has a permission
 - Persistent storage using JSON files
 - CLI-based interaction
+- Permission caching for fast authorization
+- Permission explanation engine
+- Role hierarchy graph visualisation
+- Access audit: who_has_permission
