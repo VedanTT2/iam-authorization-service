@@ -30,6 +30,9 @@ class UserStore:
             del self.users[user_id]
             self._save_users()
 
+    def save_users(self):
+        self._save_users()
+
     def _save_users(self) -> None:
         users_data = [user.to_dict() for user in self.users.values()]
         save_json(self.file_path, users_data)

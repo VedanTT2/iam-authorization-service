@@ -36,8 +36,31 @@ print("add_parent <child_role_id> <parent_role_id>")
 print("describe_user <user_id>")
 print("show_roles")
 print("why_user_has_permission <user_id> <permission>")
+print("explain_permission <user_id> <permission>")
+print("show_role_graph          - Display role hierarchy graph")
+print("who_has_permission <permission>   - Show all users who have a given permission")
 print("exit")
 
+def show_role_graph(role_store):
+    print("\nRole Graph:\n")
+
+    for role in role_store.roles.values():
+        print(role.name)
+
+        parents = list(role.parent_roles)
+
+        if parents:
+            for i, parent_id in enumerate(parents):
+
+                parent = role_store.get_role(parent_id)
+
+                if parent:
+                    connector = "└──" if i == len(parents) - 1 else "├──"
+                    print(f" {connector} {parent.name}")
+        else:
+            print(" └── No parent roles")
+
+        print()
 
 # Infinite loop so CLI keeps running until user types exit
 while True:
@@ -294,6 +317,73 @@ while True:
 
         if not found:
             print(f"User {user.username} does NOT have permission '{permission}'")
+
+    # Explain permission
+    elif action == "explain_permission":
+
+        if len(parts) != 3:
+            print("Usage: explain_permission <user_id> <permission>")
+            continue
+
+        user_id = int(parts[1])
+        permission = parts[2].lower()
+
+        user = user_store.get_user(user_id)
+
+        if not user:
+            print("User not found.")
+            continue
+
+        print("\nPermission Explanation\n")
+
+        found = False
+
+        for role_id in user.role_ids:
+            role = role_store.get_role(role_id)
+
+            if role:
+                path = role.find_permission_path(permission, role_store)
+
+                if path:
+                    print(" -> ".join(path))
+                    found = True
+                    break
+
+        if not found:
+            print("User does NOT have this permission.")
+
+    elif action == "show_role_graph":
+        show_role_graph(role_store)
+
+    # Who has given permission
+    elif action == "who_has_permission":
+
+        if len(parts) != 2:
+            print("Usage: who_has_permission <permission>")
+            continue
+
+        permission = parts[1].lower()
+        found = False
+
+        print(f"\nUsers with permission '{permission}':\n")
+
+        for user in user_store.users.values():
+
+            for role_id in user.role_ids:
+                role = role_store.get_role(role_id)
+
+                if role:
+                    path = role.find_permission_path(permission, role_store)
+
+                    if path:
+                        print(f"{user.username} -> " + " -> ".join(path))
+                        found = True
+                        break  # stop after first matching path for this user
+
+        if not found:
+            print("No users have this permission.")
+
+
 
 
     # Unknown command
