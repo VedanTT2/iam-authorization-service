@@ -9,7 +9,10 @@ class UserService:
 
         # Cache format:
         # {
-        #     user_id: {"read", "write", "delete"}
+        #     user_id: {
+        #         "allowed": {"read", "write"},
+        #         "denied": {"delete"}
+        #     }
         # }
         self.user_permission_cache = {}
 
@@ -31,16 +34,26 @@ class UserService:
 
     def build_user_permission_cache(self, user):
         """Compute all effective permissions for a user and store them in cache."""
-        all_permissions = set()
+        allowed_permissions = set()
+        denied_permissions = set()
 
         for role_id in user.role_ids:
             role = self.role_store.get_role(role_id)
 
             if role:
-                all_permissions.update(role.get_all_permissions(self.role_store))
+                role_allowed, role_denied = role.get_effective_permissions(self.role_store)
+                allowed_permissions.update(role_allowed)
+                denied_permissions.update(role_denied)
 
-        self.user_permission_cache[user.user_id] = all_permissions
-        return all_permissions
+        # Global deny override
+        allowed_permissions -= denied_permissions
+
+        self.user_permission_cache[user.user_id] = {
+            "allowed": allowed_permissions,
+            "denied": denied_permissions
+        }
+
+        return self.user_permission_cache[user.user_id]
 
     def get_user_permissions(self, user):
         if user.user_id not in self.user_permission_cache:
@@ -54,4 +67,8 @@ class UserService:
         permission = permission.lower()
 
         cached_permissions = self.get_user_permissions(user)
-        return permission in cached_permissions
+
+        if permission in cached_permissions["denied"]:
+            return False
+
+        return permission in cached_permissions["allowed"]

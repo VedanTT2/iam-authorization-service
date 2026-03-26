@@ -39,6 +39,8 @@ print("why_user_has_permission <user_id> <permission>")
 print("explain_permission <user_id> <permission>")
 print("show_role_graph          - Display role hierarchy graph")
 print("who_has_permission <permission>   - Show all users who have a given permission")
+print("add_permission <role_id> <permission>")
+print("deny_permission <role_id> <permission>")
 print("exit")
 
 def show_role_graph(role_store):
@@ -144,6 +146,7 @@ while True:
                     f"ID: {role.role_id}, "
                     f"Name: {role.name}, "
                     f"Permissions: {list(role.permissions)}, "
+                    f"Deny Permissions: {list(role.deny_permissions)}, "
                     f"Parents: {list(role.parent_roles)}"
                 )
 
@@ -238,15 +241,20 @@ while True:
             print("- No roles assigned")
         else:
             all_permissions = set()
+            denied_permissions = set()
 
             for role_id in user.role_ids:
                 role = role_store.get_role(role_id)
 
                 if role:
                     print(f"- {role.name} (ID: {role.role_id})")
-                    all_permissions.update(role.get_all_permissions(role_store))
+                    role_allowed, role_denied = role.get_effective_permissions(role_store)
+                    all_permissions.update(role_allowed)
+                    denied_permissions.update(role_denied)
                 else:
                     print(f"- Unknown Role (ID: {role_id})")
+
+            all_permissions -= denied_permissions
 
             print("\nEffective Permissions:")
             if all_permissions:
@@ -254,6 +262,13 @@ while True:
                     print(f"- {permission}")
             else:
                 print("- No permissions found")
+
+            print("\nDenied Permissions:")
+            if denied_permissions:
+                for permission in sorted(denied_permissions):
+                    print(f"- {permission}")
+            else:
+                print("- No denied permissions")
 
     # Show role graph
     elif action == "show_roles":
@@ -287,6 +302,7 @@ while True:
     # WHY USER HAS PERMISSION
     elif action == "why_user_has_permission":
 
+        # command format check
         if len(parts) != 3:
             print("Usage: why_user_has_permission <user_id> <permission>")
             continue
@@ -294,33 +310,60 @@ while True:
         user_id = int(parts[1])
         permission = parts[2].lower()
 
+        # fetch user from store
         user = user_store.get_user(user_id)
 
         if not user:
             print("User not found.")
             continue
 
-        found = False
+        # these will store explanation paths if found
+        allow_path = None
+        deny_path = None
 
+        # check every assigned role of the user
         for role_id in user.role_ids:
             role = role_store.get_role(role_id)
 
             if role:
-                path = role.find_permission_path(permission, role_store)
+                # try to find where permission is allowed from
+                if allow_path is None:
+                    allow_path = role.find_permission_path(permission, role_store)
 
-                if path:
-                    print(f"\nUser {user.username} has permission '{permission}'\n")
-                    print("Path:")
-                    print(f"{user.username} -> " + " -> ".join(path))
-                    found = True
-                    break
+                # try to find where permission is denied from
+                if deny_path is None:
+                    deny_path = role.find_deny_path(permission, role_store)
 
-        if not found:
-            print(f"User {user.username} does NOT have permission '{permission}'")
+        print(f"\nPermission analysis for user '{user.username}' and permission '{permission}':\n")
+
+        # case 1: deny exists, so final result is denied
+        if deny_path:
+            print("Decision: DENIED")
+            print("Reason: explicit deny overrides allow.\n")
+            print("Deny Path:")
+            print(f"{user.username} -> " + " -> ".join(deny_path))
+
+            # also show allow path if one exists, because this makes explanation stronger
+            if allow_path:
+                print("\nAllow Path Found Too:")
+                print(f"{user.username} -> " + " -> ".join(allow_path))
+
+        # case 2: no deny, but allow exists
+        elif allow_path:
+            print("Decision: ALLOWED")
+            print("Reason: permission is granted through assigned/inherited role.\n")
+            print("Allow Path:")
+            print(f"{user.username} -> " + " -> ".join(allow_path))
+
+        # case 3: neither allow nor deny found
+        else:
+            print("Decision: NOT GRANTED")
+            print("Reason: no assigned or inherited role provides this permission.")
 
     # Explain permission
     elif action == "explain_permission":
 
+        # validate command format
         if len(parts) != 3:
             print("Usage: explain_permission <user_id> <permission>")
             continue
@@ -328,6 +371,7 @@ while True:
         user_id = int(parts[1])
         permission = parts[2].lower()
 
+        # fetch user
         user = user_store.get_user(user_id)
 
         if not user:
@@ -336,24 +380,43 @@ while True:
 
         print("\nPermission Explanation\n")
 
-        found = False
+        allow_path = None
+        deny_path = None
 
+        # check all roles assigned to user
         for role_id in user.role_ids:
             role = role_store.get_role(role_id)
 
             if role:
-                path = role.find_permission_path(permission, role_store)
+                # find allow path only once
+                if allow_path is None:
+                    allow_path = role.find_permission_path(permission, role_store)
 
-                if path:
-                    print(" -> ".join(path))
-                    found = True
-                    break
+                # find deny path only once
+                if deny_path is None:
+                    deny_path = role.find_deny_path(permission, role_store)
 
-        if not found:
-            print("User does NOT have this permission.")
+        # deny wins over allow
+        if deny_path:
+            print("FINAL RESULT: DENIED")
+            print("WHY:")
+            print(" -> ".join(deny_path))
 
-    elif action == "show_role_graph":
-        show_role_graph(role_store)
+            if allow_path:
+                print("\nALSO FOUND ALLOW PATH:")
+                print(" -> ".join(allow_path))
+
+            print("\nNOTE: DENY overrides ALLOW.")
+
+        elif allow_path:
+            print("FINAL RESULT: ALLOWED")
+            print("WHY:")
+            print(" -> ".join(allow_path))
+
+        else:
+            print("FINAL RESULT: NOT GRANTED")
+            print("WHY:")
+            print("No role or inherited role provides this permission.")
 
     # Who has given permission
     elif action == "who_has_permission":
@@ -383,7 +446,51 @@ while True:
         if not found:
             print("No users have this permission.")
 
+    elif action == "add_permission":
 
+        if len(parts) != 3:
+            print("Usage: add_permission <role_id> <permission>")
+            continue
+
+        role_id = int(parts[1])
+        permission = parts[2].lower()
+
+        role = role_store.get_role(role_id)
+
+        if not role:
+            print("Role not found.")
+            continue
+
+        role.add_permission(permission)
+        role_store._save_roles()
+
+        # role change can affect all users, so clear full cache
+        user_service.user_permission_cache.clear()
+
+        print(f"Permission '{permission}' added to role '{role.name}'.")
+
+    elif action == "deny_permission":
+
+        if len(parts) != 3:
+            print("Usage: deny_permission <role_id> <permission>")
+            continue
+
+        role_id = int(parts[1])
+        permission = parts[2].lower()
+
+        role = role_store.get_role(role_id)
+
+        if not role:
+            print("Role not found.")
+            continue
+
+        role.add_deny_permission(permission)
+        role_store._save_roles()
+
+        # role change can affect all users, so clear full cache
+        user_service.user_permission_cache.clear()
+
+        print(f"Permission '{permission}' explicitly denied for role '{role.name}'.")
 
 
     # Unknown command
