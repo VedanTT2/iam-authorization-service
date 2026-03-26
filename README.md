@@ -4,7 +4,7 @@ A Python-based authorization engine that implements Role-Based Access Control (R
 This project simulates how real-world Identity and Access Management (IAM) systems evaluate permissions for users based on assigned roles and role hierarchies.
 The system supports role inheritance and recursive permission resolution, similar to enterprise IAM implementations.
 
-## Current Features
+## Features
 
 - User creation and storage
 - Role creation and storage
@@ -23,3 +23,4 @@ The system supports role inheritance and recursive permission resolution, simila
 - Permission explanation engine
 - Role hierarchy graph visualisation
 - Access audit: who_has_permission
+- Explicit deny permissions (DENY overrides ALLOW)
