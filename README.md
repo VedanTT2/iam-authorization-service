@@ -6,21 +6,38 @@ The system supports role inheritance and recursive permission resolution, simila
 
 ## Features
 
-- User creation and storage
-- Role creation and storage
-- Assign roles to users
-- Permission checking
-- Hierarchical role inheritance
-- Recursive permission resolution using DFS
-- Cycle-safe traversal using a visited set
-- Cycle prevention while assigning parent roles
-- Describe user access with effective permissions
-- Visualize role hierarchy
-- Trace why a user has a permission
-- Persistent storage using JSON files
-- CLI-based interaction
-- Permission caching for fast authorization
-- Permission explanation engine
-- Role hierarchy graph visualisation
-- Access audit: who_has_permission
-- Explicit deny permissions (DENY overrides ALLOW)
+Role-Based Access Control (RBAC)
+- Role inheritance
+- Allow and deny permissions
+- Permission caching
+- Audit logging
+- Explain permission (why access is granted/denied)
+- Admin queries:
+  - who_has_permission
+  - who_has_role
+- Full permission lifecycle:
+  - add_permission
+  - remove_permission
+
+## Tech Stack
+- Python
+- JSON-based storage
+
+## Key Concepts Implemented
+- RBAC model
+- Permission inheritance
+- Deny overrides allow
+- Caching for performance optimization
+- Audit logging for traceability
+
+## Sample Commands
+create_user 1 vedant  
+create_role 5 IT  
+assign_role 1 5  
+check_permission 1 read  
+view_logs  
+
+## Future Improvements
+- API version (Flask/FastAPI)
+- JWT authentication
+- Database integration
