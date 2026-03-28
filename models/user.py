@@ -8,9 +8,11 @@ class User:
     def assign_role(self, role_id,):     # Assign role to a user by ID
         self.role_ids.add(role_id)
 
-
-    def remove_role(self, role_id):      # discard() used to avoid error if no role found
-        self.role_ids.discard(role_id)
+    def remove_role(self, role_id):
+        if role_id in self.role_ids:
+            self.role_ids.remove(role_id)
+            return True
+        return False
 
     def to_dict(self):
         return {"user_id": self.user_id,

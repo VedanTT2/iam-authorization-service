@@ -13,9 +13,13 @@ class RoleStore:
             role = Role.from_dict(role_data)   # i convert each dict into role obj
             self.roles[role.role_id] = role     # store role obj in dict
 
-    def add_role(self, role):            # add new role to the store
-        self.roles[role.role_id] = role # store role in dict using role_id as key
-        self._save_roles()              # save updated roles to JSON file
+    def add_role(self, role):
+        if role.role_id in self.roles:
+            return False
+
+        self.roles[role.role_id] = role
+        self._save_roles()
+        return True             # save updated roles to JSON file
 
 
     def get_role(self, role_id):        # get a role using role_id

@@ -3,7 +3,18 @@
         "user_id": 1,
         "username": "vedant",
         "role_ids": [
-            3
+            2,
+            3,
+            20
+        ]
+    },
+    {
+        "user_id": 2,
+        "username": "eshaan",
+        "role_ids": [
+            20,
+            5,
+            6
         ]
     }
 ]

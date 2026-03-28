@@ -1,4 +1,5 @@
 # Import User model (represents identity object)
+from models.role import Role
 from models.user import User
 
 # Import stores responsible for loading/saving data from JSON
@@ -8,6 +9,9 @@ from storage.user_store import UserStore
 # Import service layer that contains business logic
 # (role assignment and permission checking)
 from services.user_service import UserService
+from utils.logger import AuditLogger
+
+logger = AuditLogger()
 
 
 # Initialize stores
@@ -27,6 +31,7 @@ print("RBAC CLI Started")
 
 # List of commands user can run
 print("Commands:")
+print("create_role <role_id> <role_name>")
 print("create_user <user_id> <username>")
 print("list_users")
 print("list_roles")
@@ -41,6 +46,10 @@ print("show_role_graph          - Display role hierarchy graph")
 print("who_has_permission <permission>   - Show all users who have a given permission")
 print("add_permission <role_id> <permission>")
 print("deny_permission <role_id> <permission>")
+print("view_logs")
+print("remove_role <user_id> <role_id>")
+print("who_has_role <role_id>   - Show all users who have a given role")
+print("remove_permission <role_id> <permission>")
 print("exit")
 
 def show_role_graph(role_store):
@@ -106,8 +115,45 @@ while True:
         # Store user in UserStore
         if user_store.add_user(user):
             print(f"User '{username}' created successfully.")
+
+            # logger
+            logger.log("CREATE_USER", {
+                "user_id": user_id,
+                "username": username
+            })
+
         else:
             print("User ID already exists.")
+
+    elif action == "create_role":
+        if len(parts) != 3:
+            print("Usage: create_role <role_id> <role_name>")
+            continue
+
+        role_id = int(parts[1])
+        role_name = parts[2]
+
+        # Check if role already exists
+        existing_role = role_store.get_role(role_id)
+
+        if existing_role:
+            print("Role ID already exists.")
+            continue
+
+         #  Create Role object
+        role = Role(role_id, role_name)
+
+        #  Pass object to store
+        role_store.add_role(role)
+
+        print(f"Role '{role_name}' created successfully.")
+
+        # Logger
+        logger.log("CREATE_ROLE", {
+            "role_id": role_id,
+            "role_name": role_name
+        })
+
 
 
     # LIST USERS
@@ -177,6 +223,12 @@ while True:
 
             print(f"Role {role_id} assigned to user {user.username}.")
 
+            # Logger
+            logger.log("ASSIGN_ROLE", {
+                "user_id": user_id,
+                "role_id": role_id
+            })
+
         except ValueError as e:
             print(e)
 
@@ -199,10 +251,20 @@ while True:
             continue
 
         # Check permission using service layer
-        if user_service.user_has_permission(user, permission):
+
+        result = user_service.user_has_permission(user, permission)
+
+        if result:
             print(f"User '{user.username}' HAS '{permission}' permission.")
         else:
             print(f"User '{user.username}' DOES NOT HAVE '{permission}' permission.")
+
+        # ✅ Logger (outside if-else)
+        logger.log("CHECK_PERMISSION", {
+            "user_id": user_id,
+            "permission": permission,
+            "result": result
+        })
 
     elif action == "add_parent":
 
@@ -216,6 +278,13 @@ while True:
         try:
             role_store.add_parent_to_role(child_role_id, parent_role_id)
             print(f"Role {child_role_id} now inherits role {parent_role_id}.")
+
+            # Logger
+            logger.log("ADD_PARENT", {
+                "child_role_id": child_role_id,
+                "parent_role_id": parent_role_id
+            })
+
         except ValueError as e:
             print(f"Error: {e}")
 
@@ -469,6 +538,12 @@ while True:
 
         print(f"Permission '{permission}' added to role '{role.name}'.")
 
+        # Logger
+        logger.log("ADD_PERMISSION", {
+            "role_id": role_id,
+            "permission": permission
+        })
+
     elif action == "deny_permission":
 
         if len(parts) != 3:
@@ -491,6 +566,134 @@ while True:
         user_service.user_permission_cache.clear()
 
         print(f"Permission '{permission}' explicitly denied for role '{role.name}'.")
+
+        # logger
+        logger.log("DENY_PERMISSION", {
+            "role_id": role_id,
+            "permission": permission
+        })
+
+    elif action == "view_logs":
+
+        try:
+            with open("data/audit.log", "r") as f:
+                logs = f.readlines()
+
+            if not logs:
+                print("No logs found.")
+            else:
+                print("\nAudit Logs:\n")
+
+                # Show last 10 logs (clean UX)
+                for log in logs[-10:]:
+                    print(log.strip())
+
+        except FileNotFoundError:
+            print("No log file found.")
+
+    # Remove roles
+
+    elif action == "remove_role":
+
+        if len(parts) != 3:
+            print("Usage: remove_role <user_id> <role_id>")
+            continue
+
+        user_id = int(parts[1])
+        role_id = int(parts[2])
+
+        # Retrieve user
+        user = user_store.get_user(user_id)
+
+        if not user:
+            print("User not found.")
+            continue
+
+        # Check if role exists
+        role = role_store.get_role(role_id)
+
+        if not role:
+            print("Role not found.")
+            continue
+
+        # Remove role from user
+        if user.remove_role(role_id):
+            # Save updated users to JSON
+            user_store.save_users()
+
+            # Clear cache for this user
+            if user.user_id in user_service.user_permission_cache:
+                del user_service.user_permission_cache[user.user_id]
+
+            print(f"Role {role_id} removed from user {user.username}.")
+
+            # Logger
+            logger.log("REMOVE_ROLE", {
+                "user_id": user_id,
+                "role_id": role_id
+            })
+        else:
+            print(f"User '{user.username}' does not have role {role_id}.")
+
+    # who has what role
+    elif action == "who_has_role":
+
+        if len(parts) != 2:
+            print("Usage: who_has_role <role_id>")
+            continue
+
+        role_id = int(parts[1])
+
+        role = role_store.get_role(role_id)
+
+        if not role:
+            print("Role not found.")
+            continue
+
+        found = False
+
+        print(f"\nUsers with role '{role.name}' (ID: {role_id}):\n")
+
+        for user in user_store.users.values():
+            if role_id in user.role_ids:
+                print(f"- {user.username} (ID: {user.user_id})")
+                found = True
+
+        if not found:
+            print("No users have this role.")
+
+    # Remove permission
+    elif action == "remove_permission":
+
+        if len(parts) != 3:
+            print("Usage: remove_permission <role_id> <permission>")
+            continue
+
+        role_id = int(parts[1])
+        permission = parts[2].lower()
+
+        role = role_store.get_role(role_id)
+
+        if not role:
+            print("Role not found.")
+            continue
+
+        if permission in role.permissions:
+            role.permissions.remove(permission)
+            role_store._save_roles()
+
+            # role change can affect all users, so clear full cache
+            user_service.user_permission_cache.clear()
+
+            print(f"Permission '{permission}' removed from role '{role.name}'.")
+
+            # Logger
+            logger.log("REMOVE_PERMISSION", {
+                "role_id": role_id,
+                "permission": permission
+            })
+        else:
+            print(f"Role '{role.name}' does not have permission '{permission}'.")
 
 
     # Unknown command

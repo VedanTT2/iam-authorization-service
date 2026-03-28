@@ -12,7 +12,8 @@
         "role_id": 2,
         "name": "Editor",
         "permissions": [
-            "write"
+            "write",
+            "display"
         ],
         "deny_permissions": [],
         "parent_roles": [
@@ -30,5 +31,39 @@
             1,
             2
         ]
+    },
+    {
+        "role_id": 12,
+        "name": "Accountant",
+        "permissions": [
+            "read",
+            "write",
+            "update"
+        ],
+        "deny_permissions": [],
+        "parent_roles": []
+    },
+    {
+        "role_id": 20,
+        "name": "HR",
+        "permissions": [],
+        "deny_permissions": [],
+        "parent_roles": []
+    },
+    {
+        "role_id": 5,
+        "name": "IT",
+        "permissions": [
+            "write"
+        ],
+        "deny_permissions": [],
+        "parent_roles": []
+    },
+    {
+        "role_id": 6,
+        "name": "Front_Desk",
+        "permissions": [],
+        "deny_permissions": [],
+        "parent_roles": []
     }
 ]

@@ -1,0 +1,18 @@
+[2026-03-28 23:17:45] CREATE_USER | user_id=2 | username=eshaan
+[2026-03-28 23:17:56] ASSIGN_ROLE | user_id=1 | role_id=2
+[2026-03-28 23:18:07] CHECK_PERMISSION | user_id=1 | permission=read | result=True
+[2026-03-28 23:43:05] CREATE_ROLE | role_id=12 | role_name=Accountant
+[2026-03-28 23:43:18] CREATE_ROLE | role_id=20 | role_name=HR
+[2026-03-28 23:45:26] CREATE_ROLE | role_id=5 | role_name=IT
+[2026-03-28 23:46:12] CREATE_ROLE | role_id=6 | role_name=Front_Desk
+[2026-03-28 23:50:58] ASSIGN_ROLE | user_id=2 | role_id=5
+[2026-03-28 23:51:06] CHECK_PERMISSION | user_id=2 | permission=read | result=False
+[2026-03-28 23:53:14] ASSIGN_ROLE | user_id=2 | role_id=5
+[2026-03-28 23:53:35] CHECK_PERMISSION | user_id=2 | permission=read | result=True
+[2026-03-28 23:58:42] ASSIGN_ROLE | user_id=2 | role_id=5
+[2026-03-29 00:00:27] ASSIGN_ROLE | user_id=2 | role_id=5
+[2026-03-29 00:00:35] REMOVE_ROLE | user_id=2 | role_id=5
+[2026-03-29 00:22:09] ADD_PERMISSION | role_id=5 | permission=read
+[2026-03-29 00:22:19] CHECK_PERMISSION | user_id=2 | permission=read | result=True
+[2026-03-29 00:22:28] REMOVE_PERMISSION | role_id=5 | permission=read
+[2026-03-29 00:22:37] CHECK_PERMISSION | user_id=2 | permission=read | result=False
