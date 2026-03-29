@@ -6,14 +6,30 @@ class Role:
         self.deny_permissions = set()   # Explicitly denied permissions
         self.parent_roles = set()       # Parent_role: A set to store all parent role
 
-    def add_permission(self, permission):   # add permissions to the roles like read write etc.
-        self.permissions.add(permission.lower())
+
 
     def remove_permission(self, permission):    # remove permission if existed,
         self.permissions.discard(permission.lower())    # discard it to avoid error if permission does not exist
 
+    def add_permission(self, permission):
+        permission = permission.lower()
+
+        if permission in self.deny_permissions:
+            raise ValueError(
+                f"Permission '{permission}' is already denied for role '{self.name}'"
+            )
+
+        self.permissions.add(permission)
+
     def add_deny_permission(self, permission):
-        self.deny_permissions.add(permission.lower())
+        permission = permission.lower()
+
+        if permission in self.permissions:
+            raise ValueError(
+                f"Permission '{permission}' is already allowed for role '{self.name}'"
+            )
+
+        self.deny_permissions.add(permission)
 
     def remove_deny_permission(self, permission):
         self.deny_permissions.discard(permission.lower())

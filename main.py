@@ -47,7 +47,6 @@ print("describe_user <user_id>")
 print("show_roles")
 print("why_user_has_permission <user_id> <permission>")
 print("explain_permission <user_id> <permission>")
-print("show_role_graph          - Display role hierarchy graph")
 print("who_has_permission <permission>   - Show all users who have a given permission")
 print("add_permission <role_id> <permission>")
 print("deny_permission <role_id> <permission>")
@@ -57,26 +56,7 @@ print("who_has_role <role_id>   - Show all users who have a given role")
 print("remove_permission <role_id> <permission>")
 print("exit")
 
-def show_role_graph(role_store):
-    print("\nRole Graph:\n")
 
-    for role in role_store.roles.values():
-        print(role.name)
-
-        parents = list(role.parent_roles)
-
-        if parents:
-            for i, parent_id in enumerate(parents):
-
-                parent = role_store.get_role(parent_id)
-
-                if parent:
-                    connector = "└──" if i == len(parents) - 1 else "├──"
-                    print(f" {connector} {parent.name}")
-        else:
-            print(" └── No parent roles")
-
-        print()
 
 # Infinite loop so CLI keeps running until user types exit
 while True:
@@ -313,7 +293,9 @@ while True:
             print("Usage: describe_user <user_id>")
             continue
 
-        user_id = int(parts[1])
+        user_id = safe_int(parts[1], "user_id")
+        if user_id is None:
+            continue
         user = user_store.get_user(user_id)
 
         if not user:
@@ -393,7 +375,10 @@ while True:
             print("Usage: why_user_has_permission <user_id> <permission>")
             continue
 
-        user_id = int(parts[1])
+        user_id = safe_int(parts[1], "user_id")
+        if user_id is None:
+            continue
+
         permission = parts[2].lower()
 
         # fetch user from store
@@ -454,8 +439,9 @@ while True:
             print("Usage: explain_permission <user_id> <permission>")
             continue
 
-        user_id = int(parts[1])
-        permission = parts[2].lower()
+        user_id = safe_int(parts[1], "user_id")
+        if user_id is None:
+            continue
 
         # fetch user
         user = user_store.get_user(user_id)
@@ -646,7 +632,7 @@ while True:
         except FileNotFoundError:
             print("No log file found.")
 
-    # Remove roles
+
 
     # Remove roles
 
@@ -723,38 +709,7 @@ while True:
         if not found:
             print("No users have this role.")
 
-    # Remove permission
-    elif action == "remove_permission":
 
-        if len(parts) != 3:
-            print("Usage: remove_permission <role_id> <permission>")
-            continue
-
-        role_id = int(parts[1])
-        permission = parts[2].lower()
-
-        role = role_store.get_role(role_id)
-
-        if not role:
-            print("Role not found.")
-            continue
-
-        if permission in role.permissions:
-            role.permissions.remove(permission)
-            role_store._save_roles()
-
-            # role change can affect all users, so clear full cache
-            user_service.user_permission_cache.clear()
-
-            print(f"Permission '{permission}' removed from role '{role.name}'.")
-
-            # Logger
-            logger.log("REMOVE_PERMISSION", {
-                "role_id": role_id,
-                "permission": permission
-            })
-        else:
-            print(f"Role '{role.name}' does not have permission '{permission}'.")
 
 
     # Unknown command

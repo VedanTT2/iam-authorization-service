@@ -53,12 +53,8 @@
     {
         "role_id": 5,
         "name": "IT",
-        "permissions": [
-            "write"
-        ],
-        "deny_permissions": [
-            "write"
-        ],
+        "permissions": [],
+        "deny_permissions": ["write"],
         "parent_roles": []
     },
     {

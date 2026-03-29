@@ -106,7 +106,65 @@ def test_cache_usage():
     user_service = UserService(role_store)
 
     result1 = user_service.user_has_permission(user, "read")
-    result2 = user_service.user_has_permission(user, "read")
 
     assert result1 is True
+    assert user.user_id in user_service.user_permission_cache
+
+    result2 = user_service.user_has_permission(user, "read")
+
     assert result2 is True
+
+# Test 5
+def test_user_with_no_roles_has_no_permissions():
+    role_store = DummyRoleStore({})
+
+    user = User(1, "test_user")
+    user.role_ids = set()
+
+    user_service = UserService(role_store)
+
+    assert user_service.user_has_permission(user, "read") is False
+    assert user_service.user_has_permission(user, "write") is False
+
+# Test 6
+def test_remove_role_from_user_clears_cache():
+    role = Role(1, "Viewer")
+    role.add_permission("read")
+
+    roles = {1: role}
+    role_store = DummyRoleStore(roles)
+
+    user = User(1, "test_user")
+    user.role_ids = {1}
+
+    user_service = UserService(role_store)
+
+    # build cache
+    assert user_service.user_has_permission(user, "read") is True
+    assert user.user_id in user_service.user_permission_cache
+
+    removed = user_service.remove_role_from_user(user, 1)
+
+    assert removed is True
+    assert user.user_id not in user_service.user_permission_cache
+    assert 1 not in user.role_ids
+
+# Test 7
+def test_cycle_detection_raises_value_error(tmp_path):
+    from storage.role_store import RoleStore
+
+    file_path = tmp_path / "roles.json"
+    file_path.write_text("[]")
+
+    role_store = RoleStore(str(file_path))
+
+    role1 = Role(1, "Role1")
+    role2 = Role(2, "Role2")
+
+    role_store.add_role(role1)
+    role_store.add_role(role2)
+
+    role_store.add_parent_to_role(2, 1)
+
+    with pytest.raises(ValueError):
+        role_store.add_parent_to_role(1, 2)
