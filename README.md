@@ -1,43 +1,52 @@
-# IAM Authorization Service
+# RBAC Mini Project
 
-A Python-based authorization engine that implements Role-Based Access Control (RBAC) using a layered architecture.
-This project simulates how real-world Identity and Access Management (IAM) systems evaluate permissions for users based on assigned roles and role hierarchies.
-The system supports role inheritance and recursive permission resolution, similar to enterprise IAM implementations.
+A CLI-based Role-Based Access Control (RBAC) system built in Python.
 
 ## Features
 
-Role-Based Access Control (RBAC)
+- Create users and roles
+- Assign roles to users
+- Remove roles from users
+- Add permissions to roles
+- Remove permissions from roles
+- Add deny permissions to roles
 - Role inheritance
-- Allow and deny permissions
-- Permission caching
-- Audit logging
-- Explain permission (why access is granted/denied)
-- Admin queries:
-  - who_has_permission
-  - who_has_role
-- Full permission lifecycle:
-  - add_permission
-  - remove_permission
-
-## Tech Stack
-- Python
-- JSON-based storage
-
-## Key Concepts Implemented
-- RBAC model
-- Permission inheritance
 - Deny overrides allow
-- Caching for performance optimization
-- Audit logging for traceability
+- Permission checking
+- Show role hierarchy
+- Explain why a user has or does not have a permission
+- View audit logs
+- JSON-based persistence
+- Permission caching
+- Unit testing with pytest
+- Safe input validation for numeric command arguments
 
-## Sample Commands
-create_user 1 vedant  
-create_role 5 IT  
-assign_role 1 5  
-check_permission 1 read  
-view_logs  
+## Project Structure
 
-## Future Improvements
-- API version (Flask/FastAPI)
-- JWT authentication
-- Database integration
+```bash
+rbac_project/
+│
+├── models/
+│   ├── role.py
+│   └── user.py
+│
+├── services/
+│   └── user_service.py
+│
+├── storage/
+│   ├── json_storage.py
+│   ├── role_store.py
+│   └── user_store.py
+│
+├── utils/
+│   └── logger.py
+│
+├── data/
+│   ├── roles.json
+│   ├── users.json
+│   └── audit.log
+│
+├── tests/
+│   └── test_permissions.py
+│
+└── main.py

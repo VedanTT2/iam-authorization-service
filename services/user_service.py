@@ -72,3 +72,20 @@ class UserService:
             return False
 
         return permission in cached_permissions["allowed"]
+
+    def remove_role_from_user(self, user, role_id):
+        role = self.role_store.get_role(role_id)
+
+        if not role:
+            raise ValueError(f"Role ID {role_id} does not exist")
+
+        if role_id not in user.role_ids:
+            return False
+
+        user.role_ids.remove(role_id)
+        self.invalidate_user_cache(user.user_id)
+        return True
+
+    def invalidate_all_caches(self):
+        """Clear permission cache for all users."""
+        self.user_permission_cache.clear()

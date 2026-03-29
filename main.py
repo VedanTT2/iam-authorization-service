@@ -24,7 +24,12 @@ user_store = UserStore()
 # UserService uses RoleStore to perform permission checks
 user_service = UserService(role_store)
 
-
+def safe_int(value, field_name):
+    try:
+        return int(value)
+    except ValueError:
+        print(f"Invalid {field_name}: must be a number.")
+        return None
 
 # CLI introduction
 print("RBAC CLI Started")
@@ -106,9 +111,11 @@ while True:
             print("Usage: create_user <user_id> <username>")
             continue
 
-        user_id = int(parts[1])
-        username = parts[2]
+        user_id = safe_int(parts[1], "user_id")
+        if user_id is None:
+            continue
 
+        username = parts[2]
         # Create user object
         user = User(user_id, username)
 
@@ -130,7 +137,10 @@ while True:
             print("Usage: create_role <role_id> <role_name>")
             continue
 
-        role_id = int(parts[1])
+        role_id = safe_int(parts[1], "role_id")
+        if role_id is None:
+            continue
+
         role_name = parts[2]
 
         # Check if role already exists
@@ -204,8 +214,11 @@ while True:
             print("Usage: assign_role <user_id> <role_id>")
             continue
 
-        user_id = int(parts[1])
-        role_id = int(parts[2])
+        user_id = safe_int(parts[1], "user_id")
+        role_id = safe_int(parts[2], "role_id")
+
+        if user_id is None or role_id is None:
+            continue
 
         # Retrieve user from storage
         user = user_store.get_user(user_id)
@@ -240,7 +253,9 @@ while True:
             print("Usage: check_permission <user_id> <permission>")
             continue
 
-        user_id = int(parts[1])
+        user_id = safe_int(parts[1], "user_id")
+        if user_id is None:
+            continue
         permission = parts[2]
 
         # Retrieve user
@@ -272,8 +287,11 @@ while True:
             print("Usage: add_parent <child_role_id> <parent_role_id>")
             continue
 
-        child_role_id = int(parts[1])
-        parent_role_id = int(parts[2])
+        child_role_id = safe_int(parts[1], "child_role_id")
+        parent_role_id = safe_int(parts[2], "parent_role_id")
+
+        if child_role_id is None or parent_role_id is None:
+            continue
 
         try:
             role_store.add_parent_to_role(child_role_id, parent_role_id)
@@ -309,25 +327,23 @@ while True:
         if not user.role_ids:
             print("- No roles assigned")
         else:
-            all_permissions = set()
-            denied_permissions = set()
-
             for role_id in user.role_ids:
                 role = role_store.get_role(role_id)
 
                 if role:
                     print(f"- {role.name} (ID: {role.role_id})")
-                    role_allowed, role_denied = role.get_effective_permissions(role_store)
-                    all_permissions.update(role_allowed)
-                    denied_permissions.update(role_denied)
                 else:
                     print(f"- Unknown Role (ID: {role_id})")
 
-            all_permissions -= denied_permissions
+            # Use service layer instead of manual aggregation
+            permissions = user_service.get_user_permissions(user)
+
+            allowed_permissions = permissions["allowed"]
+            denied_permissions = permissions["denied"]
 
             print("\nEffective Permissions:")
-            if all_permissions:
-                for permission in sorted(all_permissions):
+            if allowed_permissions:
+                for permission in sorted(allowed_permissions):
                     print(f"- {permission}")
             else:
                 print("- No permissions found")
@@ -340,31 +356,32 @@ while True:
                 print("- No denied permissions")
 
     # Show role graph
+    # Show role hierarchy
     elif action == "show_roles":
 
         print("\nRole Hierarchy\n")
 
         roles = role_store.get_all_roles()
 
-        role_map = {role.role_id: role for role in roles}
-
-        # build child mapping
-        children = {}
-
-        for role in roles:
-            for parent_id in role.parent_roles:
-                children.setdefault(parent_id, []).append(role.role_id)
+        if not roles:
+            print("No roles found.")
+            continue
 
         for role in roles:
-            if role.role_id not in children:
-                continue
-
             print(f"{role.name} ({role.role_id})")
 
-            for child_id in children[role.role_id]:
-                child = role_map.get(child_id)
-                if child:
-                    print(f" └ {child.name} ({child.role_id})")
+            if role.parent_roles:
+                print("  Parents:")
+
+                for parent_id in role.parent_roles:
+                    parent_role = role_store.get_role(parent_id)
+
+                    if parent_role:
+                        print(f"   └ {parent_role.name} ({parent_role.role_id})")
+                    else:
+                        print(f"   └ Unknown Role ({parent_id})")
+            else:
+                print("  Parents: None")
 
             print()
 
@@ -487,6 +504,8 @@ while True:
             print("WHY:")
             print("No role or inherited role provides this permission.")
 
+
+    # Who has given permission
     # Who has given permission
     elif action == "who_has_permission":
 
@@ -500,49 +519,42 @@ while True:
         print(f"\nUsers with permission '{permission}':\n")
 
         for user in user_store.users.values():
-
-            for role_id in user.role_ids:
-                role = role_store.get_role(role_id)
-
-                if role:
-                    path = role.find_permission_path(permission, role_store)
-
-                    if path:
-                        print(f"{user.username} -> " + " -> ".join(path))
-                        found = True
-                        break  # stop after first matching path for this user
+            if user_service.user_has_permission(user, permission):
+                print(f"- {user.username} (ID: {user.user_id})")
+                found = True
 
         if not found:
             print("No users have this permission.")
 
+    # Add permission to role
     elif action == "add_permission":
 
         if len(parts) != 3:
             print("Usage: add_permission <role_id> <permission>")
             continue
 
-        role_id = int(parts[1])
-        permission = parts[2].lower()
-
-        role = role_store.get_role(role_id)
-
-        if not role:
-            print("Role not found.")
+        role_id = safe_int(parts[1], "role_id")
+        if role_id is None:
             continue
 
-        role.add_permission(permission)
-        role_store._save_roles()
+        permission = parts[2].lower()
 
-        # role change can affect all users, so clear full cache
-        user_service.user_permission_cache.clear()
+        try:
+            role = role_store.add_permission_to_role(role_id, permission)
 
-        print(f"Permission '{permission}' added to role '{role.name}'.")
+            # role change can affect all users, so clear full cache through service layer
+            user_service.invalidate_all_caches()
 
-        # Logger
-        logger.log("ADD_PERMISSION", {
-            "role_id": role_id,
-            "permission": permission
-        })
+            print(f"Permission '{permission}' added to role '{role.name}'.")
+
+            # Logger
+            logger.log("ADD_PERMISSION", {
+                "role_id": role_id,
+                "permission": permission
+            })
+
+        except ValueError as e:
+            print(e)
 
     elif action == "deny_permission":
 
@@ -550,28 +562,71 @@ while True:
             print("Usage: deny_permission <role_id> <permission>")
             continue
 
-        role_id = int(parts[1])
-        permission = parts[2].lower()
-
-        role = role_store.get_role(role_id)
-
-        if not role:
-            print("Role not found.")
+        role_id = safe_int(parts[1], "role_id")
+        if role_id is None:
             continue
 
-        role.add_deny_permission(permission)
-        role_store._save_roles()
+        permission = parts[2].lower()
 
-        # role change can affect all users, so clear full cache
-        user_service.user_permission_cache.clear()
+        try:
+            role = role_store.add_deny_permission_to_role(role_id, permission)
 
-        print(f"Permission '{permission}' explicitly denied for role '{role.name}'.")
+            user_service.invalidate_all_caches()
 
-        # logger
-        logger.log("DENY_PERMISSION", {
-            "role_id": role_id,
-            "permission": permission
-        })
+            print(f"Permission '{permission}' explicitly denied for role '{role.name}'.")
+
+            logger.log("DENY_PERMISSION", {
+                "role_id": role_id,
+                "permission": permission
+            })
+
+        except ValueError as e:
+            print(e)
+
+    # Remove permission
+
+    elif action == "remove_permission":
+
+        if len(parts) != 3:
+            print("Usage: remove_permission <role_id> <permission>")
+
+            continue
+
+        role_id = safe_int(parts[1], "role_id")
+        if role_id is None:
+            continue
+
+        permission = parts[2].lower()
+
+        try:
+            role = role_store.remove_permission_from_role(role_id, permission)
+            if role is None:
+                existing_role = role_store.get_role(role_id)
+
+                if existing_role:
+                    print(f"Role '{existing_role.name}' does not have permission '{permission}'.")
+
+                else:
+                    print("Role not found.")
+
+                continue
+
+            # role change can affect all users, so clear full cache through service layer
+
+            user_service.invalidate_all_caches()
+
+            print(f"Permission '{permission}' removed from role '{role.name}'.")
+
+            # Logger
+
+            logger.log("REMOVE_PERMISSION", {
+
+                "role_id": role_id,
+                "permission": permission
+            })
+
+        except ValueError as e:
+            print(e)
 
     elif action == "view_logs":
 
@@ -593,47 +648,51 @@ while True:
 
     # Remove roles
 
+    # Remove roles
+
     elif action == "remove_role":
 
         if len(parts) != 3:
             print("Usage: remove_role <user_id> <role_id>")
+
             continue
 
-        user_id = int(parts[1])
-        role_id = int(parts[2])
+        user_id = safe_int(parts[1], "user_id")
+        role_id = safe_int(parts[2], "role_id")
+
+        if user_id is None or role_id is None:
+            continue
 
         # Retrieve user
+
         user = user_store.get_user(user_id)
 
         if not user:
             print("User not found.")
+
             continue
 
-        # Check if role exists
-        role = role_store.get_role(role_id)
+        try:
+            removed = user_service.remove_role_from_user(user, role_id)
 
-        if not role:
-            print("Role not found.")
-            continue
+            if removed:
+                # Save updated users to JSON
+                user_store.save_users()
+                print(f"Role {role_id} removed from user {user.username}.")
 
-        # Remove role from user
-        if user.remove_role(role_id):
-            # Save updated users to JSON
-            user_store.save_users()
+                # Logger
 
-            # Clear cache for this user
-            if user.user_id in user_service.user_permission_cache:
-                del user_service.user_permission_cache[user.user_id]
+                logger.log("REMOVE_ROLE", {
+                    "user_id": user_id,
+                    "role_id": role_id
+                })
 
-            print(f"Role {role_id} removed from user {user.username}.")
+            else:
 
-            # Logger
-            logger.log("REMOVE_ROLE", {
-                "user_id": user_id,
-                "role_id": role_id
-            })
-        else:
-            print(f"User '{user.username}' does not have role {role_id}.")
+                print(f"User '{user.username}' does not have role {role_id}.")
+
+        except ValueError as e:
+            print(e)
 
     # who has what role
     elif action == "who_has_role":
@@ -642,7 +701,9 @@ while True:
             print("Usage: who_has_role <role_id>")
             continue
 
-        role_id = int(parts[1])
+        role_id = safe_int(parts[1], "role_id")
+        if role_id is None:
+            continue
 
         role = role_store.get_role(role_id)
 

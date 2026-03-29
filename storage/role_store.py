@@ -57,3 +57,36 @@ class RoleStore:
     def _save_roles(self):
         roles_data = [role.to_dict() for role in self.roles.values()]  # convert all role obj into dict
         save_json(self.file_path, roles_data)    # store it in json file
+
+    def add_permission_to_role(self, role_id, permission):
+        role = self.get_role(role_id)
+
+        if not role:
+            raise ValueError(f"Role ID {role_id} does not exist")
+
+        role.add_permission(permission)
+        self._save_roles()
+        return role
+
+    def add_deny_permission_to_role(self, role_id, permission):
+        role = self.get_role(role_id)
+
+        if not role:
+            raise ValueError(f"Role ID {role_id} does not exist")
+
+        role.add_deny_permission(permission)
+        self._save_roles()
+        return role
+
+    def remove_permission_from_role(self, role_id, permission):
+        role = self.get_role(role_id)
+
+        if not role:
+            raise ValueError(f"Role ID {role_id} does not exist")
+
+        if permission not in role.permissions:
+            return None
+
+        role.permissions.remove(permission)
+        self._save_roles()
+        return role

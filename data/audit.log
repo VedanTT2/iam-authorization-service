@@ -16,3 +16,11 @@
 [2026-03-29 00:22:19] CHECK_PERMISSION | user_id=2 | permission=read | result=True
 [2026-03-29 00:22:28] REMOVE_PERMISSION | role_id=5 | permission=read
 [2026-03-29 00:22:37] CHECK_PERMISSION | user_id=2 | permission=read | result=False
+[2026-03-29 13:21:51] REMOVE_ROLE | user_id=2 | role_id=5
+[2026-03-29 13:21:59] CHECK_PERMISSION | user_id=2 | permission=write | result=False
+[2026-03-29 13:28:09] ADD_PERMISSION | role_id=20 | permission=read
+[2026-03-29 13:28:17] CHECK_PERMISSION | user_id=2 | permission=read | result=True
+[2026-03-29 13:28:28] REMOVE_PERMISSION | role_id=20 | permission=read
+[2026-03-29 13:28:37] CHECK_PERMISSION | user_id=2 | permission=read | result=False
+[2026-03-29 14:25:26] DENY_PERMISSION | role_id=5 | permission=write
+[2026-03-29 14:25:35] CHECK_PERMISSION | user_id=2 | permission=write | result=False
