@@ -15,5 +15,10 @@
             20,
             6
         ]
+    },
+    {
+        "user_id": 3,
+        "username": "Souvik",
+        "role_ids": []
     }
 ]

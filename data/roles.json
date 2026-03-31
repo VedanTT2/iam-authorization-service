@@ -36,8 +36,8 @@
         "role_id": 12,
         "name": "Accountant",
         "permissions": [
-            "update",
             "read",
+            "update",
             "write"
         ],
         "deny_permissions": [],
@@ -54,12 +54,21 @@
         "role_id": 5,
         "name": "IT",
         "permissions": [],
-        "deny_permissions": ["write"],
+        "deny_permissions": [
+            "write"
+        ],
         "parent_roles": []
     },
     {
         "role_id": 6,
         "name": "Front_Desk",
+        "permissions": [],
+        "deny_permissions": [],
+        "parent_roles": []
+    },
+    {
+        "role_id": 13,
+        "name": "warehouse_mgm",
         "permissions": [],
         "deny_permissions": [],
         "parent_roles": []

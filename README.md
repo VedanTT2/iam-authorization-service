@@ -1,6 +1,6 @@
 # RBAC System
 
-A Role-Based Access Control (RBAC) engine built in Python — designed to demonstrate core IAM concepts including role inheritance, explicit deny semantics, permission caching, and audit logging.
+A Role-Based Access Control (RBAC) authorization engine built in Python, designed to demonstrate core IAM concepts including role inheritance, explicit deny semantics, permission caching, audit logging, and JWT-protected APIs.
 
 Built as a portfolio project for transitioning into IAM / Security Engineering roles at product-based companies.
 
@@ -13,16 +13,18 @@ Role-Based Access Control is the foundation of most enterprise IAM systems. Inst
 This project implements a production-inspired RBAC model with:
 
 - **Role inheritance** — roles can inherit permissions from parent roles, forming a hierarchy
-- **Explicit deny semantics** — a denied permission always overrides an allowed one, even across inheritance chains (same model used by AWS IAM and Azure RBAC)
+- **Explicit deny semantics** — a denied permission always overrides an allowed one, even across inheritance chains
 - **Permission caching** — effective permissions are computed once and cached per user, with targeted invalidation on role changes
 - **Audit logging** — every access decision and mutation is written to a structured log file
 - **Cycle detection** — the system prevents circular inheritance chains at assignment time
+- **FastAPI support** — the same RBAC engine is exposed through REST APIs
+- **JWT-based protection** — protected endpoints require bearer token authentication
 
 ---
 
 ## Project Structure
 
-```
+```text
 rbac_project/
 │
 ├── models/
@@ -48,8 +50,28 @@ rbac_project/
 ├── tests/
 │   └── test_permissions.py  # pytest unit tests
 │
-└── main.py               # CLI entry point
+├── main.py               # CLI entry point
+└── api.py                # FastAPI entry point
 ```
+
+---
+
+## Architecture Overview
+
+The system follows a layered architecture:
+
+- **Models** — represent core entities (`User`, `Role`)
+- **Stores** — handle persistence (currently JSON-based)
+- **Service Layer** — contains business logic such as permission evaluation, caching, and role assignment
+- **CLI Layer** — handles interactive command-line operations
+- **API Layer** — exposes the same logic through FastAPI endpoints
+
+This separation improves:
+
+- maintainability
+- testability
+- reuse across CLI and API
+- easy extension later, such as replacing JSON with a database
 
 ---
 
@@ -59,18 +81,16 @@ rbac_project/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/rbac-project.git
-cd rbac-project
+git clone https://github.com/VedantTT2/iam-authorization-service.git
+cd iam-authorization-service
 
 # (Optional) Create a virtual environment
 python -m venv venv
 source venv/bin/activate      # On Windows: venv\Scripts\activate
 
 # Install dependencies
-pip install pytest
+pip install pytest fastapi uvicorn python-jose
 ```
-
-No external dependencies required for the core system.
 
 ---
 
@@ -84,7 +104,44 @@ You will see a list of available commands and an interactive prompt.
 
 ---
 
-## Available Commands
+## Running the API (FastAPI)
+
+This project also exposes a REST API using FastAPI.
+
+### Start the server
+
+```bash
+uvicorn api:app --reload
+```
+
+### Open Swagger UI
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### Authentication Flow
+
+1. Call `/login` with a username
+2. Copy the returned `access_token`
+3. Click **Authorize** in Swagger
+4. Paste the token
+5. Call protected endpoints
+
+### Example Endpoints
+
+- `POST /users` — create user
+- `POST /roles` — create role
+- `POST /assign-role` — assign role to user
+- `GET /check-permission` — check whether a user has a permission
+- `GET /users/{user_id}` — return a user's roles and effective permissions
+- `POST /roles/{role_id}/permissions` — add permission to role
+- `POST /roles/{role_id}/deny` — explicitly deny permission on role
+- `DELETE /roles/{role_id}/permissions` — remove permission from role
+
+---
+
+## Available CLI Commands
 
 | Command | Description |
 |---|---|
@@ -112,7 +169,7 @@ You will see a list of available commands and an interactive prompt.
 
 ## Example Usage
 
-```
+```text
 # Create roles
 create_role 1 Viewer
 create_role 2 Editor
@@ -120,6 +177,7 @@ create_role 3 Admin
 
 # Set up inheritance: Editor inherits from Viewer
 add_parent 2 1
+add_parent 3 2
 
 # Grant and deny permissions
 add_permission 1 read
@@ -149,44 +207,67 @@ explain_permission 1 write
 
 ## Key Design Decisions
 
-**Deny always wins.** If a user has a role that allows a permission and another role (or an inherited role) that denies it, the deny wins. This matches the principle of least privilege used in enterprise IAM systems.
+**Deny always wins.** If a user has a role that allows a permission and another role, direct or inherited, that denies it, the deny wins. This follows the principle of least privilege.
 
-**Inheritance is a DAG, not a tree.** A role can have multiple parent roles. The system walks the full inheritance graph when computing effective permissions, with cycle detection to prevent infinite loops.
+**Inheritance is modeled as a DAG, not a tree.** A role can have multiple parent roles. The system walks the full inheritance graph when computing effective permissions, while preventing cycles at assignment time.
 
-**Cache invalidation is scoped.** When a user's role changes, only that user's cache is cleared. When a role's permissions change (affecting potentially all users), the entire cache is cleared. This avoids stale permission decisions without recomputing everything unnecessarily.
+**Cache invalidation is scoped.** When a user's role assignments change, only that user's cache is cleared. When a role's permissions change, all cached permission sets are invalidated.
 
-**Storage is pluggable.** The store layer (`role_store.py`, `user_store.py`) abstracts all persistence behind a clean interface. Swapping JSON for a database only requires changes in the store layer — the service and model layers are unaffected.
+**Storage is pluggable.** The store layer (`role_store.py`, `user_store.py`) abstracts persistence behind a clean interface. Replacing JSON with a database should mainly affect the storage layer.
+
+**Performance considerations.** Permission checks are optimized using a per-user cache. After the first computation, subsequent permission checks avoid repeated inheritance traversal and become fast dictionary lookups.
 
 ---
 
 ## Running Tests
 
 ```bash
-pytest tests/test_permissions.py -v
+python -m pytest
 ```
 
 Test coverage includes:
 
-- Deny overrides allow (direct and inherited)
-- Multi-role conflict resolution
-- Deep inheritance chains (3+ levels)
-- Permission cache population and hit verification
-- Cache invalidation on role removal
-- User with no roles has no permissions
-- Cycle detection raises `ValueError`
+- deny overrides allow
+- multi-role conflict resolution
+- inheritance chains
+- permission cache population
+- cache invalidation on role removal
+- user with no roles has no permissions
+- cycle detection raises `ValueError`
+
+---
+
+## Security Considerations
+
+- JWT authentication is implemented using a shared secret key
+- Current login is a mock implementation and does not verify passwords
+- The secret key is currently hardcoded for learning/demo purposes
+
+In a production system:
+
+- secrets should be loaded from environment variables or a secrets manager
+- passwords should be hashed using a secure algorithm such as bcrypt
+- JWTs should include expiry claims such as `exp`
+- sensitive endpoints should enforce stronger role-based API authorization, such as admin-only access
 
 ---
 
 ## Roadmap
 
-- [ ] **FastAPI REST layer** — expose all operations as HTTP endpoints (`POST /users`, `GET /users/{id}/permissions`, etc.)
-- [ ] **Authentication** — API key or JWT-based auth to protect the API itself
-- [ ] **Database backend** — replace JSON storage with SQLite or PostgreSQL
-- [ ] **Wildcard permissions** — support `*` to mean all permissions (AWS IAM style)
-- [ ] **Role deletion cleanup** — automatically unassign deleted roles from all users
+- [x] RBAC engine with inheritance and deny override
+- [x] Permission caching
+- [x] CLI interface
+- [x] Unit testing with pytest
+- [x] FastAPI REST API
+- [x] Basic JWT authentication
+- [ ] Refresh token implementation
+- [ ] Database integration (SQLite/PostgreSQL)
+- [ ] Role-based API authorization (admin-only routes)
+- [ ] Dockerization
+- [ ] Role deletion cleanup
 
 ---
 
 ## Why I Built This
 
-I'm a SAP Security consultant transitioning into IAM / Security Engineering at a product-based company. I built this project to demonstrate hands-on understanding of RBAC concepts beyond configuration — including the engine design, deny semantics, inheritance graphs, and the kind of service-layer thinking that underpins real IAM systems.
+I'm a SAP Security consultant transitioning into IAM / Security Engineering at a product-based company. I built this project to demonstrate hands-on understanding of RBAC concepts beyond configuration, including authorization engine design, explicit deny semantics, inheritance graphs, caching, testing, and backend API integration.
